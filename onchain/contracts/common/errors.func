@@ -1,0 +1,6 @@
+;; This file would be compiled into the contract, but also read by wrapper code, so keep it format
+;; as
+;;       const int <name> = <value>;
+
+const int WRONG_OP = 0xffff;
+const int WRONG_WORKCHAIN = 333;

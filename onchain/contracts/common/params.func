@@ -1,0 +1,5 @@
+const WORKCHAIN = 0;
+const ADDR_STD_TYPE = 2;
+
+{- I don't know why is it so, and where it comes from -}
+const BLACK_HOLE_ADDRESS = "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"a;
