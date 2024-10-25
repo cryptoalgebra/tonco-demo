@@ -1,10 +1,13 @@
- <img src="https://tonco-demo.github.io/resources/TONCO_1500x500.jpeg" width="900" height="300" >
+ <img src="https://github.com/cryptoalgebra/tonco-demo/blob/main/resources/TONCO_1500x500.jpeg" width="900" height="300" >
  
 # TONCO 
 
 What is TONCO ?
 
 Welcome to TONCO DEX, an advanced decentralized exchange built on the TON blockchain.
+
+ <img src="https://github.com/cryptoalgebra/tonco-demo/blob/main/resources/TONCO_FACE_256x256.png" width="256" height="256" >
+ 
 
 Our platform is designed to leverage the latest DeFi innovations, providing a seamless and efficient trading experience for users.
 Key Features
