@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#root {
+  font-family: 'Inter', sans-serif;
+  background: #1a1a1a;
+  color: white;
+  --primary-green: #55beab;
+  --primary-red: #a52b6e;
+  --primary-purple: #5734e4;
+  --primary-blue: #3b82f6;
+  --primary-green-hover: #47b39e;
+  --primary-red-hover: #8f265e;
+  --primary-purple-hover: #4d30cc;
+  --primary-blue-hover: #3372d0;
+}
+
+h1 {
+  font-size: 36px;
+}
+
+h2 {
+  font-size: 18px;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  /* display: none; <- Crashes Chrome on hover */
+  -webkit-appearance: none;
+  margin: 0; /* <-- Apparently some margin are still there even though it's hidden */
+}

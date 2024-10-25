@@ -1,0 +1,322 @@
+#include "../imports/stdlib.fc";
+
+{- DEBUG -} #include "../common/debug.fc";
+#include "../common/stdlib_ext.fc";
+#include "../common/errors.func"; 
+#include "../common/messages.func"; 
+#include "../common/params.func"; 
+
+#include "../poolv3/messaging.func";
+#include "../poolv3/op-codes.func";
+#include "../poolv3/pool_utils.func";
+
+
+
+#include "op-codes.func";
+#include "errors.func";
+#include "router_storage.func";
+
+#include "get.func"; 
+
+{- Main entry point -}
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    
+    dumpstr("RouterV3: got an internal message");
+
+    if (in_msg_body.slice_empty?()) {
+        return ();
+    }
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+  
+    if (flags & MESSAGE_TAG) {
+        ;; This is not a message
+        return ();
+    }
+
+    load_storage();
+     
+    slice sender_address = cs~load_msg_addr();
+    cs~load_msg_addr(); ;; skip dst
+    cs~load_coins();    ;; skip value
+    cs~skip_bits(1);    ;; skip extracurrency collection
+    cs~load_coins();    ;; skip ihr_fee
+    int fwd_fee = cs~load_coins();
+
+    ;; force_chain(WORKCHAIN, sender_address, WRONG_WORKCHAIN);
+
+    int op       =  in_msg_body~load_uint(32);
+    int query_id =  in_msg_body~load_uint(64);
+
+    if (op == ROUTERV3_OPERATION_CREATE_POOL ) {
+        dumpstr("RouterV3: New pool creation:");
+        ;; (32 + 64) + 267 + 267 + 24 + 160
+
+        slice jetton_wallet0    = in_msg_body~load_msg_addr();   
+        slice jetton_wallet1    = in_msg_body~load_msg_addr();
+        int   tick_spacing      = in_msg_body~load_uint(24);
+        int   price_sqrt        = in_msg_body~load_uint(160);
+        int   pool_active       = in_msg_body~load_uint(1);
+        cell  nftv3_content     = in_msg_body~load_ref();
+        cell  nftv3item_content = in_msg_body~load_ref();
+
+        cell  addr_cell         = in_msg_body~load_ref();
+        slice addr_slice        = addr_cell.begin_parse();
+        slice jetton0_minter    = addr_slice~load_msg_addr();
+        slice jetton1_minter    = addr_slice~load_msg_addr();
+        slice controller_addr   = addr_slice~load_msg_addr();
+
+
+        {- There is a way to make a check if wallets and minters match with onchain call, however we trust admin, so it is unnessesary -}
+        throw_unless(INVALID_CALLER, equal_slice_bits(router::admin_address, sender_address));       
+        dumpaddr(" Jetton0 Wallet: ", jetton_wallet0);
+        dumpaddr(" Jetton1 Wallet: ", jetton_wallet1);
+        dumpaddr(" Jetton0 Minter: ", jetton0_minter);
+        dumpaddr(" Jetton1 Minter: ", jetton1_minter);
+        
+        dumpaddr(" Controller: ", controller_addr);
+
+        
+        (cell state_init, int order) = calculate_pool_state_init(jetton_wallet0, jetton_wallet1, router::poolv3_code, router::accountv3_code, router::position_nftv3_code);
+        slice pool_address = calculate_address(state_init, 0);
+        
+        throw_unless(POOL_ILLEGAL_PARAMS, order != 0);
+        {- Router passes it's admin to the pool -}
+
+        cell minters_cell = order > 0 ?
+            begin_cell().store_slice(jetton0_minter).store_slice(jetton1_minter).end_cell() :
+            begin_cell().store_slice(jetton1_minter).store_slice(jetton0_minter).end_cell() ;
+
+        int has_controller = (slice_bits(controller_addr) > 2) ? 1 : 0;
+        
+        ;; 32 + 64 + 1 + 267 + 1 + 267 + 24 + 160 + 1 + 64 = 881
+        cell msg_body = begin_cell()
+            .store_uint (POOLV3_OPERATION_INIT, 32)
+            .store_uint (query_id, 64)
+            .store_uint (1, 1)              ;; Has admin address
+            .store_slice(router::admin_address)
+            .store_uint (has_controller, 1) ;; Has controller address            
+            .store_slice(controller_addr)
+
+            .store_uint (tick_spacing, 24)
+            .store_uint (price_sqrt, 160)
+            .store_uint (pool_active, 1)         ;; Pool active          
+        
+            .store_ref  (nftv3_content)
+            .store_ref  (nftv3item_content)
+            .store_maybe_ref(minters_cell)
+            
+            .store_uint (router::pool_seqno, 64) ;; Indexer Only
+        .end_cell();
+
+        send_message_with_stateinit(0, pool_address, state_init, msg_body, MODE_CARRY_REMAINING_GAS);
+
+        dumpaddr(" Resulting pool: ", pool_address);
+        router::pool_seqno += 1;
+        save_storage();
+        return();
+    }
+
+ 
+
+    ;;dumpinthex("RouterV3: Op: ", op);
+
+    if (op == ROUTERV3_OPERATION_PAY_TO) { 
+        dumpstr("OPERATION_PAY_TO Recived");
+        slice owner           = in_msg_body~load_msg_addr();
+        int   exit_code       = in_msg_body~load_uint(32);
+        int   pool_seqno      = in_msg_body~load_uint(64);
+        int   has_coins       = in_msg_body~load_uint(1);
+
+        if (has_coins == 0) {
+            {- There are no coin pay request attached to the message so we have nothing to do.
+              Generally we should return TON value to user, but our system so far has no sources of
+              ROUTERV3_OPERATION_PAY_TO without Coins Info Cell.
+            -} 
+            return();
+        }
+
+        cell coins_cell       = in_msg_body~load_ref();   
+        slice coins_slice     = coins_cell.begin_parse();
+
+        int   amount0         = coins_slice~load_coins();
+        slice jetton0_address = coins_slice~load_msg_addr();
+        int   amount1         = coins_slice~load_coins();
+        slice jetton1_address = coins_slice~load_msg_addr();        
+
+        dumpstr("  We fill fund:");
+        dumpaddr("   Owner  : ", owner);
+        dumpint ("   Amount0: ", amount0);
+        dumpint ("   Amount1: ", amount1);
+
+        {-
+        ;; So far we just gon't care
+        ;; int gas_required = get_gas_fee(20000, WORKCHAIN);
+        ;; throw_unless(INSUFFICIENT_GAS, msg_value > gas_required);
+        slice owner   = in_msg_body~load_msg_addr();
+        int exit_code = in_msg_body~load_uint(32);
+        cell cs_d     = in_msg_body~load_ref(); 
+        
+        ;; parse ref cell
+        slice psd = cs_d.begin_parse();
+        (int amount0_out, slice token0_address, int amount1_out, slice token1_address) = (psd~load_coins(), psd~load_msg_addr(), psd~load_coins(), psd~load_msg_addr());
+        -}
+
+        (cell state_init, _) = calculate_pool_state_init(jetton0_address, jetton1_address, router::poolv3_code, router::accountv3_code, router::position_nftv3_code);
+        slice pool_address = calculate_address(state_init, 0);
+        throw_unless(INVALID_CALLER, equal_slice_bits(pool_address, sender_address)); ;; check if its a valid pool
+        
+        int gas_required = 10000000; ;; this amount router wants to keep
+        int ton_amount = 0;
+        int mode = MODE_CARRY_REMAINING_GAS;
+        
+        ;; Either one or both amounts must be non-zero
+        if ((amount0 > 0) & (amount1 > 0)) {
+            ;; Divide remaining ton_amount between two transactions
+            ton_amount = (msg_value - gas_required) / 2;
+            mode = MODE_NORMAL;
+        } 
+
+        if (amount0 > 0) {
+            builder body0 = create_simple_transfer_body(query_id, 0, amount0, owner);
+            body0 = body0.store_uint(exit_code, 32); ;; append exit code
+            send_simple_message(ton_amount, jetton0_address, body0.end_cell(), mode | MODE_IGNORE_ERRORS);
+        }
+
+        if (amount1 > 0) {
+            builder body1 = create_simple_transfer_body(query_id, 0, amount1, owner);
+            body1 = body1.store_uint(exit_code, 32); ;; append exit code
+            send_simple_message(ton_amount, jetton1_address, body1.end_cell(), mode | MODE_IGNORE_ERRORS);
+        }
+
+        return();
+    }
+
+    if (op == OPERATION_TRANSFER_NOTIFICATION) { 
+        dumpstr("  Router: transfer_notification message recived");
+        {- 
+            Router can't explicitly check that "sender_address" is a jetton wallet or that
+            it is wallet of the router. Anyone can forge the message.
+            
+            However this operation will not change any state. there is no save_storage() at the end.
+
+            Validity check is done indirectly by the fact that pool_address is computed from sender_address,
+            and if sender_address won't be correct, then pool_address would be non-existant.
+            
+            So we consider that sender_address is sender jetton wallet address that really got some tokens.       
+            Now let's check what user wants to do with it? 
+        -}
+
+        int jetton_amount = in_msg_body~load_coins();
+        slice from_user   = in_msg_body~load_msg_addr(); ;; User wallet that started the exchange
+
+        throw_unless(INVALID_AMOUNT, jetton_amount > 0); 
+
+        ;; addressdump(from_user);
+        dumpint("  We got tokens :", jetton_amount);
+
+        if (in_msg_body.slice_refs_empty?())
+        {
+            dumpstr("    No Additional commands well it's a gift then");
+            return();
+        }
+       
+        cell ref_cs = in_msg_body~load_ref(); 
+        slice ref_ds = ref_cs.begin_parse();
+
+         if (ref_ds.slice_data_empty?()) {
+            dumpstr("    No Op...  well it's a gift then");
+            return();
+        }
+
+        int transferred_op   = ref_ds~load_uint(32);
+        slice jetton_wallet1 = ref_ds~load_msg_addr();
+        
+        dumpinthex("  OP:" , transferred_op);
+        ;; force_chain(WORKCHAIN, token_wallet1, WRONG_WORKCHAIN);
+
+        if (transferred_op == POOLV3_OPERATION_SWAP) {
+            dumpstr("  Router: It'a swap request");
+            int   sqrtPriceLimitX96 = ref_ds~load_uint(160);
+            int   minOutAmount      = ref_ds~load_coins();
+            slice to_address        = ref_ds~load_msg_addr();
+
+            dumpaddr("  Sender (Wallet): ", sender_address);
+            dumpint ("  Limit price    : ", sqrtPriceLimitX96);
+            dumpaddr("  Recv   (Wallet): ", to_address);
+            
+            slice pool_address = calculate_pool_address(sender_address, jetton_wallet1, router::poolv3_code, router::accountv3_code, router::position_nftv3_code);
+
+            builder msg_body = begin_cell()   ;;  32 + 64 + 267 + 267
+                .store_uint (POOLV3_OPERATION_SWAP, 32)
+                .store_uint (query_id, 64)
+                .store_slice(to_address)      ;; Target for the swap
+                .store_slice(sender_address)  ;; wallet of the source jetton
+                .store_ref(begin_cell()
+                    .store_coins(jetton_amount)
+                    .store_uint (sqrtPriceLimitX96, 160)
+                    .store_coins(minOutAmount)
+                    .store_slice(from_user)
+                .end_cell());
+
+            send_simple_message(0, pool_address, msg_body.end_cell(), MODE_CARRY_REMAINING_GAS);
+            return ();        
+        }
+
+        if (transferred_op == POOLV3_OPERATION_FUND_ACCOUNT) {
+            dumpstr ("  We got funding for the acccount");
+            dumpaddr("  Sender (Wallet1): ", sender_address);
+            dumpaddr("         (Wallet2): ", jetton_wallet1);
+            dumpint ("            Amount: ", jetton_amount);
+
+            int enough0   = ref_ds~load_coins();
+            int enough1   = ref_ds~load_coins();
+            int liquidity = ref_ds~load_uint(128);
+            int tickMin   = ref_ds~load_int(24);
+            int tickMax   = ref_ds~load_int(24);            
+
+            slice pool_address = calculate_pool_address(sender_address, jetton_wallet1, router::poolv3_code, router::accountv3_code, router::position_nftv3_code);
+
+
+            dumpaddr("   Pool           : ", pool_address);
+
+            builder msg_body = begin_cell()
+                .store_uint (POOLV3_OPERATION_FUND_ACCOUNT, 32)
+                .store_uint (query_id, 64)
+                .store_slice(from_user);
+
+            {- Router hides the swap for the user compleatly -}
+            if (slice_hash(sender_address) > slice_hash(jetton_wallet1)) {
+                msg_body = msg_body
+                    .store_coins(jetton_amount)
+                    .store_coins(0)
+                    .store_coins(enough0)
+                    .store_coins(enough1);
+            } else {
+                msg_body = msg_body
+                    .store_coins(0)
+                    .store_coins(jetton_amount)
+                    .store_coins(enough1)
+                    .store_coins(enough0);
+            }
+            
+            msg_body = msg_body
+                .store_uint(liquidity, 128)
+                .store_int (tickMin,    24)
+                .store_int (tickMax,    24);
+            
+            send_simple_message(0, pool_address, msg_body.end_cell(), MODE_CARRY_REMAINING_GAS);
+            return ();
+        }
+
+
+        return();
+    }
+
+    if (op == OPERATION_EXCESSES) { 
+        dumpstr("We recieved a back message");
+        return();
+    }
+
+    throw(WRONG_OP);
+}

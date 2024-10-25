@@ -1,0 +1,77 @@
+module.exports = {
+  root: true,
+  env: { browser: true, es2020: true },
+  extends: [
+    'airbnb',
+    'prettier',
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:react-hooks/recommended',
+  ],
+  parser: '@typescript-eslint/parser',
+  settings: {
+    'import/parsers': {
+      '@typescript-eslint/parser': ['.ts', '.tsx'],
+    },
+    'import/resolver': {
+      typescript: {},
+    },
+  },
+  ignorePatterns: [
+    'dist',
+    '.eslintrc.cjs',
+    'generated.ts',
+    'generated',
+    'ui',
+    'sdk',
+  ],
+  plugins: ['prettier', 'react-refresh', '@typescript-eslint', 'import'],
+  rules: {
+    'prettier/prettier': 'error',
+    'no-unused-vars': 'warn',
+    'no-console': 'off',
+    'no-plusplus': [
+      'error',
+      {
+        allowForLoopAfterthoughts: true,
+      },
+    ],
+    'no-shadow': 'off',
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': 'error',
+    'no-underscore-dangle': 'off',
+    'func-names': 'off',
+    camelcase: 'off',
+    'no-process-exit': 'off',
+    'object-shorthand': 'off',
+    'class-methods-use-this': 'off',
+    'prefer-destructuring': 'off',
+    'no-nested-ternary': 'off',
+    'no-restricted-syntax': ['off', 'ForOfStatement'],
+    'react/react-in-jsx-scope': 'off',
+    'react/jsx-props-no-spreading': 'off',
+    'import/no-absolute-path': 'off',
+    'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+    'import/prefer-default-export': 'off',
+    'import/extensions': ['error', { ts: 'never', tsx: 'never' }],
+    'import/no-unresolved': [
+      'error',
+      {
+        ignore: ['@web3modal/wagmi/react'],
+      },
+    ],
+    'react/jsx-curly-brace-presence': 'off',
+    'react/require-default-props': 'off',
+    'react/no-unused-prop-types': 'off',
+    'react/jsx-filename-extension': [
+      1,
+      { extensions: ['.js', '.jsx', '.ts', '.tsx'] },
+    ],
+    'react-refresh/only-export-components': [
+      'warn',
+      { allowConstantExport: true },
+    ],
+    'jsx-a11y/no-autofocus': 'off',
+    'jsx-a11y/control-has-associated-label': 'off',
+  },
+};
