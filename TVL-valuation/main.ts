@@ -1,4 +1,4 @@
-import { Action, Api, HttpClient, SmartContractAction, Trace } from "tonapi-sdk-js";
+import { AccountEvent, Action, Api, HttpClient, SmartContractAction, Trace } from "tonapi-sdk-js";
 import pLimit from "p-limit";
 import {Address, TonClient, toNano, JettonWallet} from "@ton/ton";
 import { ContractOpcodes } from "./opCodes";
@@ -35,7 +35,9 @@ async function getTVL() {
 }
 
 
-async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, addressStr : string ) : Promise<number> {
+export type UserTVLData = {[x : number] : number}
+
+async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, addressStr : string ) : Promise< {[timestamp : number] : number}> {
 
     /* Open provider */
     const API_KEY = "AGHD4DYGGAWBDZAAAAAPYUMY4V22MOI74LDT4VIF47EBFARRYYABMNGJMDGF6QJI2JATNKA";
@@ -52,20 +54,54 @@ async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, address
     });
     const client = new Api(httpClient);
 
-    
-    /* Get local time for unix time */
-
-
+    /* We use TON at current price. Because whatever */
+    const TONPriceRaw = await (await fetch("https://tonapi.io/v2/rates?tokens=ton&currencies=usd")).json()
+    const TONPriceUSD = TONPriceRaw.rates.TON.prices["USD"]
+    console.log("TON Price: " + TONPriceUSD);
 
     /* Fetch all user transactions for the period */
     const userAddress : Address = Address.parse(addressStr)
-    const evList = await client.accounts.getAccountEvents(userAddress.toString(), {start_date: startUnixTime, end_date: endUnixTime, limit: 100});
+  
 
-    console.log
+    let eventIds : AccountEvent[] = []
+    let effectiveStartTime = startUnixTime;
+    let effectiveEndTime = endUnixTime;
+
+    let haveTxs = true;
+
+
+    while (haveTxs) {
+        /* We get ids in backward order */
+        const lastTxs = await client.accounts.getAccountEvents(userAddress.toString(), 
+        {
+            limit: 100,
+            start_date: effectiveStartTime,
+            end_date: effectiveEndTime
+        });
+
+        if (lastTxs.events.length) {
+            eventIds = [...eventIds, ...lastTxs.events];
+            let chunkStartTime = lastTxs.events[0].timestamp;
+            let chunkEndTime   = lastTxs.events[lastTxs.events.length - 1].timestamp;
+
+            console.log(`Got a chunk of length ${lastTxs.events.length} with info`)
+            for (let eventId of lastTxs.events) {                
+                    console.log(`   - ${new Date(eventId.timestamp * 1000)}`)
+            }
+
+            effectiveEndTime = chunkEndTime
+        } else {
+            haveTxs = false;
+        }
+    }
+
+
+    console.log(`Event ids loaded - ${eventIds.length}`)
+    eventIds = eventIds.sort((a : AccountEvent, b : AccountEvent) => {return (a.timestamp - b.timestamp)})
+
     const limit = pLimit(1);
-
     const events = await Promise.all(
-        evList.events.map((event) =>
+        eventIds.map((event) =>
           limit(() => client.events.getEvent(event.event_id)),
         ),
       );
@@ -74,11 +110,13 @@ async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, address
     let tonInvestment = 0n
     let usdtInvestment = 0n
 
+    let tvlAtTimestamp : {[timestamp : number] : number} = {}
+
     for (let event of events ) {        
         let execs     : Action[] = event.actions.filter((action) => action.SmartContractExec)
         let transfers : Action[] = event.actions.filter((action) => action.JettonTransfer)
 
-        console.log(event.event_id)
+        //console.log(event.event_id)
 
         let ton = 0n;
         let usd = 0n;
@@ -96,14 +134,10 @@ async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, address
             if (Number(exec.SmartContractExec!.operation) == ContractOpcodes.POOLV3_BURN) {
                 console.log("BURN:")
                 hasLPImpact = true
-            }
-
-            /*if (account.toString() != ROUTER.toString()) {
-                hasLPImpact = false
-            }*/
+            }   
         }
 
-        console.log(event.value_flow)
+        // console.log(event.value_flow)
 
         for (let flow of event.value_flow)
         {
@@ -119,7 +153,7 @@ async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, address
             }
 
             if (Address.parse(flow.account.address).toString() == ROUTER_WTTON_WALLET.toString()) {
-                console.log("Ton flow", flow.ton)
+                // console.log("Ton flow", flow.ton)
                 ton += BigInt(flow.ton)
             }
 
@@ -134,10 +168,12 @@ async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, address
             usdtInvestment += usd 
             tonInvestment  += ton 
 
-            console.log("USDT", Number(usd) / 1000000.0 )
-            console.log("TON ", Number(ton) / 1000000000.0 )
+            tvlAtTimestamp[event.timestamp] = (Number(usdtInvestment) / 1e6) + (Number(tonInvestment) / 1e9) * TONPriceUSD;
+
+            console.log("  - USDT", Number(usd) / 1000000.0 )
+            console.log("  - TON ", Number(ton) / 1000000000.0 )
         } else {
-            console.log("Not an LP operation")
+            // console.log("Not an LP operation")
         }
            
     }
@@ -147,22 +183,19 @@ async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, address
     console.log("TON ", Number(tonInvestment) / 1000000000.0 )
 
 
-    const TONPriceRaw = await (await fetch("https://tonapi.io/v2/rates?tokens=ton&currencies=usd")).json()
-    const TONPriceUSD = TONPriceRaw.rates.TON.prices["USD"]
-    console.log("TON Price: " + TONPriceUSD);
 
     const tvl = (Number(usdtInvestment) / 1e6) + (Number(tonInvestment) / 1e9) * TONPriceUSD;
     console.log("TVL: " + tvl);
     
-    //console.log(txsFromEvents)
+    Object.entries(tvlAtTimestamp).map(([a, b]) => {console.log(new Date(Number(a) * 1000), " - ",  b, " USD")})
 
 
-    return tvl;
+    return tvlAtTimestamp;
 }
 
 
 //getTVL().catch((e) => console.log(e)).then(() => console.log('Done'));
 
 // Since the start of the TONCO mainnet
-//getUserTVLUSD(Math.floor(Date.parse("2024-11-18T12:00:00.000Z") / 1000), Math.floor(Date.now() / 1000), "UQCRuwIDpgPE8flurzhvcoR8VCdWuCZljjcjAB0ITP35gg32")
-getUserTVLUSD(Math.floor(Date.parse("2024-11-18T12:00:00.000Z") / 1000), Math.floor(Date.now() / 1000), "UQBXkWL8EOxpYVrpo4BdC9hk-wGrA1E0bTVw0_5o6qIFJFRJ")
+getUserTVLUSD(Math.floor(Date.parse("2024-11-18T12:00:00.000Z") / 1000), Math.floor(Date.now() / 1000), "UQCRuwIDpgPE8flurzhvcoR8VCdWuCZljjcjAB0ITP35gg32")
+/// getUserTVLUSD(Math.floor(Date.parse("2024-11-18T12:00:00.000Z") / 1000), Math.floor(Date.now() / 1000), "UQAt4dox6p4lpyv13PicDbiW0x3GJZKS24G6JU1bEwUH6ZCc") // Nick 
