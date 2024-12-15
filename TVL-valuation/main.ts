@@ -37,17 +37,14 @@ async function getTVL() {
 
 export type UserTVLData = {[x : number] : number}
 
-async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, addressStr : string ) : Promise< {[timestamp : number] : number}> {
-
-    /* Open provider */
-    const API_KEY = "AGHD4DYGGAWBDZAAAAAPYUMY4V22MOI74LDT4VIF47EBFARRYYABMNGJMDGF6QJI2JATNKA";
+async function getUserTVLUSD(apiKey: string, startUnixTime: number, endUnixTime: number, addressStr : string ) : Promise< {[timestamp : number] : number}> {
 
     /* tonApi client for fetching additional data, such as jetton balances, etc. */
     const httpClient = new HttpClient({
         baseUrl: "https://tonapi.io",
         baseApiParams: {
             headers: {
-                Authorization: `Bearer ${API_KEY}`,
+                Authorization: `Bearer ${apiKey}`,
                 "Content-type": "application/json",
             },
         },
@@ -195,7 +192,3 @@ async function getUserTVLUSD(startUnixTime: number, endUnixTime: number, address
 
 
 //getTVL().catch((e) => console.log(e)).then(() => console.log('Done'));
-
-// Since the start of the TONCO mainnet
-getUserTVLUSD(Math.floor(Date.parse("2024-11-18T12:00:00.000Z") / 1000), Math.floor(Date.now() / 1000), "UQCRuwIDpgPE8flurzhvcoR8VCdWuCZljjcjAB0ITP35gg32")
-/// getUserTVLUSD(Math.floor(Date.parse("2024-11-18T12:00:00.000Z") / 1000), Math.floor(Date.now() / 1000), "UQAt4dox6p4lpyv13PicDbiW0x3GJZKS24G6JU1bEwUH6ZCc") // Nick 
