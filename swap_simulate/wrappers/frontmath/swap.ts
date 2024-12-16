@@ -154,7 +154,7 @@ export class PoolSimulator {
                 state.amountCalculated = state.amountCalculated - step.amountOut
             } else {
                 state.amountSpecifiedRemaining = state.amountSpecifiedRemaining + step.amountOut
-                state.amountCalculated = state.amountCalculated + (step.amountIn, step.feeAmount)
+                state.amountCalculated = state.amountCalculated + (step.amountIn + step.feeAmount)
             }
 
             // TODO
