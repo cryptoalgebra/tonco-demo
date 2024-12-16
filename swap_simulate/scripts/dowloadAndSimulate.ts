@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import { Address, beginCell, Cell, ShardAccount, toNano, TonClient4 } from "@ton/ton"
 import { getHttpV4Endpoint } from "@orbs-network/ton-access";
-import { PoolV3Contract } from "../wrappers/PoolV3Contract"
 import { Blockchain, createShardAccount } from '@ton/sandbox';
 import { TickMath } from '../wrappers/frontmath/frontMath';
 import { BLACK_HOLE_ADDRESS } from '../wrappers/tonUtils';
 import { PoolSimulator } from '../wrappers/frontmath/swap';
 import { compile } from '@ton/blueprint';
+import { PoolV3Contract } from '../wrappers/PoolV3Contract';
 
 async function main() {
     
@@ -65,14 +65,25 @@ async function main() {
     console.log(poolState)
     let poolTicks = await poolContractOpened.getTickInfosAll()
     console.log("Pool ticks: ", poolTicks.length)
+
+    let tickKotlin = ""
+    for (let i of poolTicks.keys()) {
+        tickKotlin += (`ticks [${poolTicks[i].tickNum}] = BigInteger("${poolTicks[i].liquidityNet.toString()}")\n`)
+    }
+    
+    fs.writeFileSync("kotlin.ticks", tickKotlin)
+
   
-    const step0 = 94243023749710n / 100n
+    const step0A = 94243023749710n / 100n
+    const step0B = 942430237400n / 100n
+    
     let i = 1n;
     while (i < 60n) 
     {
         for (let dir of [false, true]) 
         {
-            const amount0 = step0 * i
+            const amount0 = (dir ? step0A : step0B) * i
+            let limitPrice = dir ? TickMath.MIN_SQRT_RATIO + 1n : TickMath.MAX_SQRT_RATIO - 1n
 
             console.log(`zeroForOne=${dir} amount0=${amount0}` )
             // reset state
@@ -81,55 +92,64 @@ async function main() {
             const poolContract = new PoolV3Contract(poolAddress)
             let poolContractOpened = blockchain.openContract(poolContract)
         
-           
+            
             // Call get method
             let res = {amount0 : 0n , amount1 : 0n}
-            if (true) {       
-                let gasLimit = 1000000n
-                res = (await poolContractOpened.getSwapEstimate(dir, amount0, TickMath.MIN_SQRT_RATIO + 1n, 0n))
+            let result1 : bigint 
+            if (true) {                       
+                res = (await poolContractOpened.getSwapEstimate(dir, amount0, limitPrice, 0n))
                 console.log(`${i} ${amount0} -> ( ${res.amount0}, ${res.amount1})`)
+                result1 = dir ? res.amount1 : res.amount0
             }
 
-            // Make real swap
-            let swapMessage = PoolV3Contract.messageSwapPool(BLACK_HOLE_ADDRESS, dir ? poolState.jetton0_wallet : poolState.jetton1_wallet, amount0, TickMath.MIN_SQRT_RATIO + 1n, 0n)
-            const message : Cell  = beginCell()
-                .storeUint(0, 1) // tag
-                .storeUint(1, 1) // ihr_disabled
-                .storeUint(1, 1) // allow bounces
-                .storeUint(0, 1) // not bounced itself
-                .storeAddress(poolState.router_address)
-                .storeAddress(poolAddress)
-                .storeCoins(toNano(1.0))
-                .storeUint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-                .storeRef(swapMessage)
-            .endCell()
-        
-            const realSwap = await blockchain.sendMessage(message)
-            let poolStateAfter = await poolContractOpened.getPoolStateAndConfiguration()
-            let real = {amount0: poolStateAfter.reserve0 - poolState.reserve0, amount1 : poolStateAfter.reserve1 - poolState.reserve1 }
+            let result2 : bigint 
+            
+            if (true) {
+                // Make real swap
+                let swapMessage = PoolV3Contract.messageSwapPool(BLACK_HOLE_ADDRESS, dir ? poolState.jetton0_wallet : poolState.jetton1_wallet, amount0, limitPrice, 0n)
+                const message : Cell  = beginCell()
+                    .storeUint(0, 1) // tag
+                    .storeUint(1, 1) // ihr_disabled
+                    .storeUint(1, 1) // allow bounces
+                    .storeUint(0, 1) // not bounced itself
+                    .storeAddress(poolState.router_address)
+                    .storeAddress(poolAddress)
+                    .storeCoins(toNano(1.0))
+                    .storeUint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                    .storeRef(swapMessage)
+                .endCell()
+            
+                const realSwap = await blockchain.sendMessage(message)
+                let poolStateAfter = await poolContractOpened.getPoolStateAndConfiguration()
+                let real = {amount0: poolStateAfter.reserve0 - poolState.reserve0, amount1 : poolStateAfter.reserve1 - poolState.reserve1 }
+                result2 = dir ? real.amount1 : real.amount0
+            }
 
+            let result3 : bigint 
                 
-            // Simulated swap
-            let poolSimulator : PoolSimulator  = new  PoolSimulator(
-                poolState.price_sqrt,
-                poolState.tick, 
-                poolState.liquidity,
-                poolState.lp_fee_current,
-                poolTicks
-            )
+            if (true) {
+                // Simulated swap
+                let poolSimulator : PoolSimulator  = new  PoolSimulator(
+                    poolState.price_sqrt,
+                    poolState.tick, 
+                    poolState.liquidity,
+                    poolState.lp_fee_current,
+                    poolTicks
+                )
 
-            const simSwap = await poolSimulator.swapInternal(dir, amount0, TickMath.MIN_SQRT_RATIO + 1n )
+                const simSwap = await poolSimulator.swapInternal(dir, amount0, limitPrice )
+                result3 = dir ? simSwap.amount1 : simSwap.amount0
+            }
 
 
 
-            console.log(`Reserve 0 - ${real.amount0} | ${amount0} | ${simSwap.amount0}`)
-            console.log(`Reserve 1 - ${real.amount1} | ${res.amount1} | ${simSwap.amount1}`)
+            console.log(`Swap results - ${result1} | ${result2} | ${result3}`)
 
-            if (real.amount1 != res.amount1 ) {
+            if (result1 != result2 ) {
                 throw("Difference")
             }
 
-            if (real.amount1 != simSwap.amount1 ) {
+            if (result1 != result3 ) {
                 throw("Difference")
             }
 
