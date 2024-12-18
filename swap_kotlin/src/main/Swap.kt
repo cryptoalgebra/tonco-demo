@@ -102,16 +102,21 @@ data class ToncoAMM(
                 BigInteger.ZERO
             );
            
+           println("state.tick    :${state.tick}")
             val nextKey : Long? 
             if (direction == SwapDirection.FORWARD) {
                 // Price goes down with forward swap
-                nextKey = this.ticks.ceilingKey(state.tick) // Less of equal checks
+
+                nextKey = this.ticks.floorKey(state.tick) // Less of equal checks
             } else {                
                 nextKey = this.ticks.higherKey(state.tick)  // Strictly higher checks
             }
 
             step.tickNext = nextKey
             step.initialized = (nextKey != null)
+
+            println("step.tickNext    :${step.tickNext}")
+            println("step.initialized :${step.initialized}")
 
             if (step.tickNext < TickMath.MIN_TICK) {
                 step.tickNext = TickMath.MIN_TICK;
@@ -120,6 +125,8 @@ data class ToncoAMM(
             }
 
             step.sqrtPriceNextX96 = tickMath.getSqrtRatioAtTick(step.tickNext);
+            println("step.sqrtPriceNextX96 :${step.sqrtPriceNextX96}")
+
 
             var sqrtPriceLimitStep : BigInteger
             if (direction == SwapDirection.FORWARD) {
@@ -182,7 +189,8 @@ data class ToncoAMM(
             } else if (state.sqrtPriceX96 != step.sqrtPriceStartX96) {
                 state.tick = tickMath.getTickAtSqrtRatio(state.sqrtPriceX96);
             }
-            //console.log(`REM = ${state.amountSpecifiedRemaining}`)
+            println("REM = ${state.amountSpecifiedRemaining}")
+            //throw RuntimeException("BREAK")
         }
 
 

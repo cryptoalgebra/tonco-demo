@@ -32,12 +32,16 @@ class SwapMath {
         
         val zeroForOne : Boolean = (sqrtRatioCurrentX96 >= sqrtRatioTargetX96)
         val exactIn    : Boolean = (amountRemaining >= BigInteger.ZERO)
+
+        println("computeSwapStep: zeroForOne = ${zeroForOne}")
+        println("computeSwapStep: exactIn = ${exactIn}")
         
         if (exactIn) {
             val amountRemainingLessFee = (amountRemaining * (SwapMath.FEE_DENOMINATOR - feePips)) / SwapMath.FEE_DENOMINATOR
         
             if (zeroForOne) {
                 amountIn = sqrtPriceMath.getAmount0Delta(sqrtRatioTargetX96, sqrtRatioCurrentX96, liquidity, true)
+                println("computeSwapStep: amountIn_1 = ${amountIn}")
             } else {
                 amountIn = sqrtPriceMath.getAmount1Delta(sqrtRatioCurrentX96, sqrtRatioTargetX96, liquidity, true)
             }
@@ -90,6 +94,7 @@ class SwapMath {
             }
         }
 
+        println("computeSwapStep: amountIn_2 = ${amountIn}")
         
         if ((!exactIn) && (amountOut > - amountRemaining)) {
             amountOut = - amountRemaining

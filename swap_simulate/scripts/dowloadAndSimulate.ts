@@ -13,14 +13,11 @@ async function main() {
     const endpoint = await getHttpV4Endpoint()
     const client = new TonClient4({ endpoint })
 
+    let jsonName = "swap_ground_truth.json"
     let poolAddressS = "EQD25vStEwc-h1QT1qlsYPQwqU5IiOhox5II0C_xsDNpMVo7"
     let poolAddress = Address.parse(poolAddressS)
     let pTonProxyMinterS = "EQCUnExmdgwAKADi-j2KPKThyQqTc7U650cgM0g78UzZXn9J"
     let pTonProxyMinder = Address.parse(pTonProxyMinterS)
-
-    const cseqno = (await client.getLastBlock()).last.seqno
-    const state = await client.getAccount(cseqno, poolAddress)
-
 
     let result : {
         address : string,
@@ -35,21 +32,27 @@ async function main() {
 
     }
 
+    if (fs.existsSync(jsonName)) {
+        console.log(`${jsonName} exists loading data from there...`)
+        result = JSON.parse(fs.readFileSync(jsonName, 'utf-8'))
+    } else {
+        const cseqno = (await client.getLastBlock()).last.seqno
+        const state = await client.getAccount(cseqno, poolAddress)
 
-    if (state.account.state.type != "active") {
-        return
+        if (state.account.state.type != "active") {
+            return
+        }
+
+        result.address = poolAddress.toString()
+        result.code = state.account.state.code! 
+        result.data = state.account.state.data!
+
     }
-  
-    result.address = poolAddress.toString()
-    result.code = state.account.state.code! 
-    result.data = state.account.state.data!
 
-    //console.log(result.code)
-    //console.log(result.data)
-    
-    let bcCode :Cell = Cell.fromBoc(Buffer.from(result.code, "base64"))[0]
+  
+    let bcCode :Cell = Cell.fromBase64(result.code)
     //let bcCode : Cell = await compile("PoolV3Contract")
-    let bcData : Cell = Cell.fromBoc(Buffer.from(result.data, "base64"))[0]       
+    let bcData : Cell = Cell.fromBase64(result.data)
     
 
     const blockchain = await Blockchain.create();    
@@ -65,22 +68,37 @@ async function main() {
     console.log(poolState)
     let poolTicks = await poolContractOpened.getTickInfosAll()
     console.log("Pool ticks: ", poolTicks.length)
+    const step0A = 94243023749710n / 100n
+    const step0B = 942430237400n / 100n
 
     let tickKotlin = ""
+    tickKotlin += "    val ticks = TreeMap<Long, BigInteger>()\n"
     for (let i of poolTicks.keys()) {
-        tickKotlin += (`ticks [${poolTicks[i].tickNum}] = BigInteger("${poolTicks[i].liquidityNet.toString()}")\n`)
+        tickKotlin += (`    ticks [${poolTicks[i].tickNum}] = BigInteger("${poolTicks[i].liquidityNet.toString()}")\n`)
     }
+
+    tickKotlin +=     
+    `var amm = ToncoAMM(\n` +
+    `    BigInteger("${poolState.price_sqrt.toString()}"),\n` +
+    `    ${poolState.tick},\n` +
+    `    BigInteger("${poolState.liquidity.toString()}"),\n` +
+    `    ${poolState.lp_fee_current},        \n` +
+    `    ticks\n` +
+    `)\n` +
+    `var swapResult = amm.convertForward(\n`  +
+    `    BigInteger.ZERO,  // reserves? \n`  +
+    `    BigInteger.ZERO,  // reserves? \n`  +
+    `    BigInteger("${step0A}"),\n`  +
+    `    SwapDirection.FORWARD\n`  +
+    `)\n`  
     
     fs.writeFileSync("kotlin.ticks", tickKotlin)
 
-  
-    const step0A = 94243023749710n / 100n
-    const step0B = 942430237400n / 100n
     
-    let i = 1n;
-    while (i < 60n) 
+    let i = 2n;
+    while (i < 3n) 
     {
-        for (let dir of [false, true]) 
+        for (let dir of [/*false,*/ true]) 
         {
             const amount0 = (dir ? step0A : step0B) * i
             let limitPrice = dir ? TickMath.MIN_SQRT_RATIO + 1n : TickMath.MAX_SQRT_RATIO - 1n
@@ -160,7 +178,12 @@ async function main() {
         i = i + 1n
     }
 
-    fs.writeFileSync("swap_ground_truth.json", JSON.stringify(result))
+    fs.writeFileSync("swap_ground_truth.json", JSON.stringify(result, null, 2))
+
+    /* Some testes */
+
+    let tick = -51660
+    console.log(`TickMath.getSqrtRatioAtTick(${tick}) = ${TickMath.getSqrtRatioAtTick(tick)} `)
 }
 
 

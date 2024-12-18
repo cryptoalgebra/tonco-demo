@@ -24,10 +24,12 @@ class SqrtPriceMath {
         liquidity: BigInteger,
         roundUp: Boolean
     ): BigInteger {
+
+        println("getAmount0Delta(${sqrtRatioAX96p} ${sqrtRatioBX96p} ${liquidity} ${roundUp})")
         var sqrtRatioAX96 = sqrtRatioAX96p
         var sqrtRatioBX96 = sqrtRatioBX96p
         
-        if (sqrtRatioAX96p > sqrtRatioBX96p) 
+        if (sqrtRatioAX96 > sqrtRatioBX96) 
         {
             sqrtRatioAX96 = sqrtRatioBX96p
             sqrtRatioBX96 = sqrtRatioAX96p

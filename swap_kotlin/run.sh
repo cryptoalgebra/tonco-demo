@@ -1,5 +1,6 @@
 #!/bin/bash
 
+rm SwapSimulate.jar
 
 kotlinc \
     src/main/Main.kt \
