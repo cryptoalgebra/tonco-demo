@@ -1,0 +1,19 @@
+{
+    "name": "sdk_examples",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "TONCO",
+    "dependencies": {
+        "@orbs-network/ton-access": "^2.3.3",
+        "@swc/core": "^1.5.25",
+        "@ton/core": "^0.59.0",
+        "@ton/crypto": "^3.3.0",
+        "@ton/ton": "^15.1.0",
+        "@toncodex/sdk": "1.0.30",
+        "bignumber.js": "^9.1.2"
+    }
+}
