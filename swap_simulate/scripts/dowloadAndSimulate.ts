@@ -1,12 +1,13 @@
 import * as fs from 'fs';
 import { Address, beginCell, Cell, ShardAccount, toNano, TonClient4 } from "@ton/ton"
 import { getHttpV4Endpoint } from "@orbs-network/ton-access";
-import { Blockchain, createShardAccount } from '@ton/sandbox';
+import { printTransactionFees, Blockchain, createShardAccount } from '@ton/sandbox';
 import { TickMath } from '../wrappers/frontmath/frontMath';
 import { BLACK_HOLE_ADDRESS } from '../wrappers/tonUtils';
 import { PoolSimulator } from '../wrappers/frontmath/swap';
-import { compile } from '@ton/blueprint';
 import { PoolV3Contract } from '../wrappers/PoolV3Contract';
+import { SwapSimulator, TickConstructorArgs } from '@toncodex/sdk';
+import BigNumber from 'bignumber.js';
 
 async function main() {
     
@@ -95,10 +96,10 @@ async function main() {
     fs.writeFileSync("kotlin.ticks", tickKotlin)
 
     
-    let i = 2n;
-    while (i < 3n) 
+    let i = 8n;
+    while (i < 9n) 
     {
-        for (let dir of [/*false,*/ true]) 
+        for (let dir of [false/*, true*/]) 
         {
             const amount0 = (dir ? step0A : step0B) * i
             let limitPrice = dir ? TickMath.MIN_SQRT_RATIO + 1n : TickMath.MAX_SQRT_RATIO - 1n
@@ -138,6 +139,7 @@ async function main() {
                 .endCell()
             
                 const realSwap = await blockchain.sendMessage(message)
+                printTransactionFees(realSwap.transactions)
                 let poolStateAfter = await poolContractOpened.getPoolStateAndConfiguration()
                 let real = {amount0: poolStateAfter.reserve0 - poolState.reserve0, amount1 : poolStateAfter.reserve1 - poolState.reserve1 }
                 result2 = dir ? real.amount1 : real.amount0
@@ -157,18 +159,60 @@ async function main() {
 
                 const simSwap = await poolSimulator.swapInternal(dir, amount0, limitPrice )
                 result3 = dir ? simSwap.amount1 : simSwap.amount0
+
+                /* Let's test exactOut */
+                let poolSimulatorNoFee : PoolSimulator  = new  PoolSimulator(poolState.price_sqrt,poolState.tick, poolState.liquidity, 0, poolTicks)
+                
             }
 
+            let result4 : bigint 
+            if (true) {
+                // SDK: Simulated swap
+                const tickList: TickConstructorArgs[] = poolTicks.map((tick) => ({
+                    index: tick.tickNum,
+                    liquidityGross: tick.liquidityGross.toString(),
+                    liquidityNet: tick.liquidityNet.toString(),
+                }));
 
+                const swapSimulator = new SwapSimulator( poolState.price_sqrt, poolState.tick, poolState.tick_spacing, poolState.liquidity, poolState.lp_fee_current, tickList);
 
-            console.log(`Swap results - ${result1} | ${result2} | ${result3}`)
+                /* estimate 1 TON to USDT swap off-chain */
+                let newState = await swapSimulator.swap(dir, amount0);
+                result4 = newState.amountCalculated
+
+                const newSqrtPrice = newState.sqrtPriceX96
+                const sqrtRatio   = BigNumber(newSqrtPrice.toString()).div(BigNumber(poolState.price_sqrt.toString()))
+                const priceImpact = sqrtRatio.pow(2)
+                const priceImpactPercent = (priceImpact.times(100)).minus(100)
+                console.log(`Price Impact: ${priceImpactPercent.toFixed(4)} %`)
+
+                /* Let's test exactOut */
+                const swapSimulatorNoFee = new SwapSimulator( poolState.price_sqrt, poolState.tick, poolState.tick_spacing, poolState.liquidity, 0, tickList);
+                console.log(`Estimate how much we would need to get ${amount0}`)
+                const exactOutSwap = await swapSimulatorNoFee.swap(dir, -amount0)
+                console.log(exactOutSwap)          
+
+                const swapSimulatorNoFeeBack = new SwapSimulator( exactOutSwap.sqrtPriceX96, exactOutSwap.tick, poolState.tick_spacing, exactOutSwap.liquidity, 0, tickList);
+                const exactOutBack = await swapSimulatorNoFeeBack.swap(dir, exactOutSwap.amountCalculated)                
+                console.log(exactOutBack)                
+
+                //const exactOutSwap = await swapSimulatorNoFee.swap(dir, -amount0)
+                
+            }
+
+            console.log(`             | dir   |   amount    | getSwapEstimate | blockchain call | ts simulation | sdk simulation `)
+            console.log(`Swap results | ${dir.toString().padStart(5)} | ${i} ${amount0.toString().padStart(10)} | ${result1} | ${result2} | ${result3} | ${result4} `)
 
             if (result1 != result2 ) {
-                throw("Difference")
+                throw("Difference with direct call")
             }
 
-            if (result1 != result3 ) {
-                throw("Difference")
+            if ((result3 !== undefined) && (result1 != result3)) {
+                throw("Difference with simulator")
+            }
+
+            if ((result4 !== undefined) && (result1 != result4) ) {
+                throw("Difference with SDK")
             }
 
             // Saving ground truth
@@ -182,8 +226,8 @@ async function main() {
 
     /* Some testes */
 
-    let tick = -51660
-    console.log(`TickMath.getSqrtRatioAtTick(${tick}) = ${TickMath.getSqrtRatioAtTick(tick)} `)
+    //let tick = -51660
+    //console.log(`TickMath.getSqrtRatioAtTick(${tick}) = ${TickMath.getSqrtRatioAtTick(tick)} `)
 }
 
 

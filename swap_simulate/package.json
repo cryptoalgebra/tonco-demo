@@ -15,6 +15,9 @@
     "@ton/crypto": "^3.3.0",
     "@ton/sandbox": "^0.22.0",
     "@ton/ton": "^15.1.0",
-    "bignumber.js": "^9.1.2"
-  }
+    "@toncodex/sdk" : "^1.0.32",
+    "bignumber.js": "^9.1.2"   
+  },
+  "temp" : { "@toncodex/sdk": "^1.0.32" }
+
 }
