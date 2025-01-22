@@ -27,10 +27,12 @@ export class PoolSimulator {
 
     constructor(
         public sqrtRatioX96 : bigint,
-        public tickCurrent : number,
+        public tick : number,
         public liquidity : bigint,
         public fee : number,
-        public ticks : NumberedTickInfo[]
+        public ticks : NumberedTickInfo[],
+
+        public trace : boolean = false
     ) { 
     }
 
@@ -41,11 +43,13 @@ export class PoolSimulator {
                 if (this.ticks[i].tickNum <= tick)
                     return [this.ticks[i].tickNum, true]                
             }
+            return [TickMath.MIN_TICK , false]
         } else {
             for (let i = 0; i < this.ticks.length; i++) {
                 if (this.ticks[i].tickNum > tick)
                     return [this.ticks[i].tickNum, true]                
             }
+            return [TickMath.MAX_TICK , false]
         }
         return [tick, false]
     }
@@ -69,6 +73,15 @@ export class PoolSimulator {
         amount0 : bigint,
         amount1 : bigint
     }> {
+
+        if (this.trace) {
+            console.log(`swapInternal(): called`)
+            console.log(`zeroForOne       : ${zeroForOne}`)
+            console.log(`amountSpecified  : ${amountSpecified}`)
+            console.log(`sqrtPriceLimitX96: ${sqrtPriceLimitX96}`)
+        }
+
+
         let toReturn = {amount0 : 0n, amount1 : 0n}
 
         if (!sqrtPriceLimitX96) {
@@ -92,20 +105,28 @@ export class PoolSimulator {
         }
         
         const exactInput : boolean = amountSpecified > 0n;
-
+        console.log(`ExactInput: ${exactInput}`)
         // keep track of swap state
 
         const state = {
             amountSpecifiedRemaining: amountSpecified,
             amountCalculated: 0n,
             sqrtPriceX96: this.sqrtRatioX96,
-            tick: this.tickCurrent,
+            tick: this.tick,
             liquidity: this.liquidity,
         };
 
         // start swap while loop
-        while ((state.amountSpecifiedRemaining > 0n) && (state.sqrtPriceX96 != sqrtPriceLimitX96)) 
+        while ((state.amountSpecifiedRemaining != 0n) && (state.sqrtPriceX96 != sqrtPriceLimitX96)) 
         {
+            if (this.trace) {
+                console.log(` === Staring new swap iteration ==="`);
+                console.log(`   amountSpecifiedRemaining: `, state.amountSpecifiedRemaining)
+                console.log(`   current price: `, state.sqrtPriceX96 )
+                console.log(`   target Price : `, sqrtPriceLimitX96)
+                console.log(`   curent tick  : `, state.tick )
+            }
+            
             const step: Partial<StepComputations> = {};
             step.sqrtPriceStartX96 = state.sqrtPriceX96;
     
@@ -187,6 +208,10 @@ export class PoolSimulator {
             toReturn.amount0 = state.amountCalculated;
             toReturn.amount1 = amountSpecified - state.amountSpecifiedRemaining;    
         }
+
+        this.sqrtRatioX96 = state.sqrtPriceX96
+        this.tick  = state.tick
+        this.liquidity    = state.liquidity
 
         return toReturn
     }

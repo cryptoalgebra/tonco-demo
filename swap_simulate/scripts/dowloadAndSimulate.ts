@@ -7,6 +7,7 @@ import { BLACK_HOLE_ADDRESS } from '../wrappers/tonUtils';
 import { PoolSimulator } from '../wrappers/frontmath/swap';
 import { PoolV3Contract } from '../wrappers/PoolV3Contract';
 import { SwapSimulator, TickConstructorArgs } from '@toncodex/sdk';
+//import { SwapSimulator, TickConstructorArgs } from 'toncodexlocal';
 import BigNumber from 'bignumber.js';
 
 async function main() {
@@ -96,13 +97,15 @@ async function main() {
     fs.writeFileSync("kotlin.ticks", tickKotlin)
 
     
-    let i = 8n;
-    while (i < 9n) 
+    let i = 2n;
+    while (i < 3n) 
     {
-        for (let dir of [false/*, true*/]) 
+        for (let dir of [/*false*/ true]) 
         {
             const amount0 = (dir ? step0A : step0B) * i
-            let limitPrice = dir ? TickMath.MIN_SQRT_RATIO + 1n : TickMath.MAX_SQRT_RATIO - 1n
+            let limitPrice     = dir ? TickMath.MIN_SQRT_RATIO + 1n : TickMath.MAX_SQRT_RATIO - 1n
+            let limitPriceBack = dir ? TickMath.MAX_SQRT_RATIO - 1n : TickMath.MIN_SQRT_RATIO + 1n
+            
 
             console.log(`zeroForOne=${dir} amount0=${amount0}` )
             // reset state
@@ -148,6 +151,7 @@ async function main() {
             let result3 : bigint 
                 
             if (true) {
+                console.log("================================= TS: Simulated swap ================================= ")
                 // Simulated swap
                 let poolSimulator : PoolSimulator  = new  PoolSimulator(
                     poolState.price_sqrt,
@@ -160,14 +164,43 @@ async function main() {
                 const simSwap = await poolSimulator.swapInternal(dir, amount0, limitPrice )
                 result3 = dir ? simSwap.amount1 : simSwap.amount0
 
+                console.log("Sim Swap : ", simSwap)
                 /* Let's test exactOut */
-                let poolSimulatorNoFee : PoolSimulator  = new  PoolSimulator(poolState.price_sqrt,poolState.tick, poolState.liquidity, 0, poolTicks)
-                
+                let poolSimulatorNoFee : PoolSimulator  = new PoolSimulator(poolState.price_sqrt, poolState.tick, poolState.liquidity, 0, poolTicks)
+                const exactOutSwap = await poolSimulatorNoFee.swapInternal( dir, -amount0, limitPrice)
+                console.log("New state tick      :", poolSimulatorNoFee.tick)
+                console.log("New state price     :", poolSimulatorNoFee.sqrtRatioX96)                
+                console.log("New state liquidity :", poolSimulatorNoFee.liquidity)
+
+                const exactOutBack = await poolSimulatorNoFee.swapInternal( !dir, amount0, limitPriceBack)
+
+                console.log("Exact Out Swap : ", exactOutSwap)
+                console.log("Exact Swap Back: ", exactOutBack)
+
+                console.log("Final state tick      :", poolSimulatorNoFee.tick)
+                console.log("Final state price     :", poolSimulatorNoFee.sqrtRatioX96)                
+                console.log("Final state liquidity :", poolSimulatorNoFee.liquidity)
+
+                let deltaAmount0 = (exactOutSwap.amount0 + exactOutBack.amount0)
+                let deltaAmount1 = (exactOutSwap.amount1 + exactOutBack.amount1)
+
+                deltaAmount0 = deltaAmount0 > 0 ? deltaAmount0 : - deltaAmount0
+                deltaAmount1 = deltaAmount1 > 0 ? deltaAmount1 : - deltaAmount1
+
+                if (deltaAmount0 > 1) {
+                    throw("Difference with exactOut and back")
+                }
+
+                if (deltaAmount1 > 1) {
+                    throw("Difference with exactOut and back")
+                }
             }
 
             let result4 : bigint 
             if (true) {
                 // SDK: Simulated swap
+                console.log("================================= SDK: Simulated swap ================================= ")
+
                 const tickList: TickConstructorArgs[] = poolTicks.map((tick) => ({
                     index: tick.tickNum,
                     liquidityGross: tick.liquidityGross.toString(),
@@ -193,8 +226,8 @@ async function main() {
                 console.log(exactOutSwap)          
 
                 const swapSimulatorNoFeeBack = new SwapSimulator( exactOutSwap.sqrtPriceX96, exactOutSwap.tick, poolState.tick_spacing, exactOutSwap.liquidity, 0, tickList);
-                const exactOutBack = await swapSimulatorNoFeeBack.swap(dir, exactOutSwap.amountCalculated)                
-                console.log(exactOutBack)                
+                const exactOutBack = await swapSimulatorNoFeeBack.swap(!dir, amount0)                
+                console.log(exactOutBack)
 
                 //const exactOutSwap = await swapSimulatorNoFee.swap(dir, -amount0)
                 
