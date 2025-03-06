@@ -124,10 +124,10 @@
     teslabot "^1.3.0"
     zod "^3.21.4"
 
-"@toncodex/sdk@1.0.37-mainnet":
-  version "1.0.37-mainnet"
-  resolved "https://registry.yarnpkg.com/@toncodex/sdk/-/sdk-1.0.37-mainnet.tgz#9b14a92b19c94fd7dd251d8034aa882808bbcefb"
-  integrity sha512-/Ue9bZLZzKNTZ1sYc/Ih//THEeeIiExX0u1+eIoe6S9c/k0uvU+aeWAX4SICj+hU2VM+7q5/cH8QXea2BlTH1g==
+"@toncodex/sdk@1.0.40-mainnet":
+  version "1.0.40-mainnet"
+  resolved "https://registry.yarnpkg.com/@toncodex/sdk/-/sdk-1.0.40-mainnet.tgz#7ecfd2fcf883cd1b04d358af49ae168e2f5f20d4"
+  integrity sha512-nS5m3pZzzCirkvV2y6R3akOx989qRKJHO/uqu0G3539EyuJN05+J3ZKdf8sVn94od3T5e6rRE5v6L7RiZi3sXw==
   dependencies:
     "@ton/core" "^0.59.0"
     "@ton/crypto" "^3.3.0"

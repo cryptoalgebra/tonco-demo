@@ -1,9 +1,0 @@
-import { CHART_SPAN } from 'src/components/explore/types';
-
-export const UNIX_TIMESTAMPS = {
-  [CHART_SPAN.DAY]: 2419200000 / 30,
-  [CHART_SPAN.WEEK]: (2419200000 / 30) * 7,
-  [CHART_SPAN.MONTH]: 2419200000,
-  [CHART_SPAN.THREE_MONTH]: 2419200000 * 3,
-  [CHART_SPAN.YEAR]: 2419200000 * 12,
-};

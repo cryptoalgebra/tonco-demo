@@ -53,8 +53,8 @@ async function main() {
         useFullPrecision: true,
     });
 
-    const userJetton0Wallet = Address.parse("TON user wallet");
-    const userJetton1Wallet = Address.parse("USDT user wallet");
+    const userJetton0Wallet = Address.parse("TON user jetton wallet");
+    const userJetton1Wallet = Address.parse("USDT user jetton wallet");
 
     const routerJetton0Wallet = jetton0_wallet;
     const routerJetton1Wallet = jetton1_wallet;
