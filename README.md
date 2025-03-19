@@ -1,24 +1,44 @@
- <img src="https://tonco.io/static/tonco-cover.jpeg" width="900" height="300" >
- 
-# TONCO 
+# TONCO Examples
 
-What is TONCO ?
+TypeScript examples of SDK usage, including dependency installation, script execution, and swap operation simulations.
 
-Welcome to TONCO DEX, an advanced decentralized exchange built on the TON blockchain.
+## 📦 Installation
 
- <img src="https://tonco.io/static/tonco-astro.png" width="256" height="256" >
- 
+Make sure ts-node is installed if you're working with TypeScript:
 
-Our platform is designed to leverage the latest DeFi innovations, providing a seamless and efficient trading experience for users.
-Key Features
+```bash
+npm install -g ts-node
+```
 
- * Concentrated Liquidity
-    Maximize your capital efficiency by providing liquidity within specific price ranges, enhancing your earning potential.
- *   Dynamic Fees
-    Enjoy flexible, real-time fee adjustments based on market conditions, ensuring the best rates for your trades.
- *  Farming
-    Stake your assets and earn rewards by participating in our high-yield farming programs.
- *  Tap-to-Earn Game
-    Join over 800,000 monthly users in our fun and engaging tap-to-tarn game featuring Tonco the Pea. Explore space, complete challenges, earn crypto rewards with our adorable space explorer & spread the word to engage with a vivid ecosystem of TONCO!
+Using npm:
+```bash
+cd sdk_examples
+npm install
+```
+or yarn:
+```bash
+cd sdk_examples
+yarn install
+```
 
-TONCO DEX combines innovation and community-driven incentives, empowering users to unlock the full potential of decentralized finance on TON.
+## 🚀 Getting Started
+
+TypeScript examples of SDK usage can be found in the sdk_examples directory. To run a specific script:
+
+### Using npm scripts:
+
+```bash
+npm run dev                # Run index.ts
+npm run simulate-onchain   # Run on-chain swap simulation
+npm run simulate-offchain  # Run off-chain swap simulation
+```
+
+### Running manually:
+
+```bash
+ts-node <script_name>.ts
+```
+
+## 📄 Examples
+
+The sdk_examples directory contains example scripts demonstrating how to use the SDK. You can explore and adapt them to your needs.
