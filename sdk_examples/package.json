@@ -4,7 +4,10 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "dev": "ts-node index.ts",
+        "simulate-onchain": "ts-node ./swap/simulate/onchainSimulation.ts",
+        "simulate-offchain": "ts-node ./swap/simulate/offchainSimulation.ts"
     },
     "author": "TONCO",
     "dependencies": {

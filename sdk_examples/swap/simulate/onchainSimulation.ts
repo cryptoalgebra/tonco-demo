@@ -4,7 +4,7 @@ import { getSwapEstimate, PoolV3Contract, pTON_MINTER } from "@toncodex/sdk";
 
 const POOL_ADDRESS = "EQD25vStEwc-h1QT1qlsYPQwqU5IiOhox5II0C_xsDNpMVo7"; // TON - USDT
 
-async function main() {
+export async function onchainSimulation() {
     const endpoint = await getHttpV4Endpoint();
     const client = new TonClient4({ endpoint });
 
@@ -19,7 +19,10 @@ async function main() {
 
     /* estimate 1 TON to USDT swap on-chain */
     const result = await getSwapEstimate(amountIn, POOL_ADDRESS, zeroToOne, client);
+
     return result;
 }
 
-main().then(console.log).catch(console.error);
+onchainSimulation().then((result) => {
+    console.log(`1 TON = ${Number(result) / 10 ** 6} USDT`);
+});

@@ -19,7 +19,7 @@ const jetton0 = new Jetton(pTON_MINTER, 9, "TON"); // (address, decimals, symbol
 const jetton1 = new Jetton("0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe", 6, "USD₮");
 const amount0 = toNano(1).toString(); // 1 TON
 
-async function main() {
+export async function createMintMessage() {
     const endpoint = await getHttpV4Endpoint();
     const client = new TonClient4({ endpoint });
 
@@ -97,3 +97,7 @@ async function main() {
         throw new Error("Failed to validate mint request");
     }
 }
+
+createMintMessage().then((result) => {
+    console.log(result);
+});
