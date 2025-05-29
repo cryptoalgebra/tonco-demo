@@ -11,11 +11,14 @@ npm install -g ts-node
 ```
 
 Using npm:
+
 ```bash
 cd sdk_examples
 npm install
 ```
+
 or yarn:
+
 ```bash
 cd sdk_examples
 yarn install
@@ -29,8 +32,15 @@ TypeScript examples of SDK usage can be found in the sdk_examples directory. To 
 
 ```bash
 npm run dev                # Run index.ts
-npm run simulate-onchain   # Run on-chain swap simulation
-npm run simulate-offchain  # Run off-chain swap simulation
+npm run estimate-swap-exact-in      # Estimate exact-in swap
+npm run estimate-swap-exact-out     # Estimate exact-out swap
+npm run estimate-swap-exact-in-multihop   # Estimate exact-in multihop swap
+npm run estimate-swap-exact-out-multihop  # Estimate exact-out multihop swap
+
+npm run create-swap-message         # Create swap message
+npm run create-swap-multihop-message # Create multihop swap message
+
+npm run create-mint-message         # Create mint message
 ```
 
 ### Running manually:
