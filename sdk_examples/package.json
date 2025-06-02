@@ -6,8 +6,13 @@
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "dev": "ts-node index.ts",
-        "simulate-onchain": "ts-node ./swap/simulate/onchainSimulation.ts",
-        "simulate-offchain": "ts-node ./swap/simulate/offchainSimulation.ts"
+        "estimate-swap-exact-in": "ts-node ./swap/estimate/estimateSwapExactIn.ts",
+        "estimate-swap-exact-out": "ts-node ./swap/estimate/estimateSwapExactOut.ts",
+        "estimate-swap-exact-in-multihop": "ts-node ./swap/estimate/estimateSwapExactInMultihop.ts",
+        "estimate-swap-exact-out-multihop": "ts-node ./swap/estimate/estimateSwapExactOutMultihop.ts",
+        "create-swap-message": "ts-node ./swap/message/createSwapMessage.ts",
+        "create-swap-multihop-message": "ts-node ./swap/message/createSwapMultihopMessage.ts",
+        "create-mint-message": "ts-node ./mint/message/createMintMessage.ts"
     },
     "author": "TONCO",
     "dependencies": {
@@ -16,7 +21,7 @@
         "@ton/core": "^0.59.0",
         "@ton/crypto": "^3.3.0",
         "@ton/ton": "^15.1.0",
-        "@toncodex/sdk": "1.0.40-mainnet",
+        "@toncodex/sdk": "mainnet",
         "bignumber.js": "^9.1.2"
     }
 }

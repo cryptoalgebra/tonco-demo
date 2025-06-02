@@ -1,11 +1,14 @@
 import { Address, toNano } from "@ton/core";
 import { getHttpV4Endpoint } from "@orbs-network/ton-access";
 import {
+    ADDRESS_ZERO,
+    DEX_VERSION,
     Jetton,
+    JettonMinter,
     Percent,
     Pool,
+    PoolContract,
     PoolMessageManager,
-    PoolV3Contract,
     Position,
     pTON_MINTER,
     tryParseTick,
@@ -13,9 +16,9 @@ import {
 } from "@toncodex/sdk";
 import { TonClient4 } from "@ton/ton";
 
-const wallet = Address.parse("User wallet");
-const POOL_ADDRESS = "EQD25vStEwc-h1QT1qlsYPQwqU5IiOhox5II0C_xsDNpMVo7"; // TON - USDT
-const jetton0 = new Jetton(pTON_MINTER, 9, "TON"); // (address, decimals, symbol)
+const recipient = Address.parse(ADDRESS_ZERO); // replace with user wallet address
+const POOL_ADDRESS = "EQC_R1hCuGK8Q8FfHJFbimp0-EHznTuyJsdJjDl7swWYnrF0"; // TON - USDT v1.5
+const jetton0 = new Jetton(pTON_MINTER.v1_5, 9, "TON"); // (address, decimals, symbol)
 const jetton1 = new Jetton("0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe", 6, "USD₮");
 const amount0 = toNano(1).toString(); // 1 TON
 
@@ -23,7 +26,7 @@ export async function createMintMessage() {
     const endpoint = await getHttpV4Endpoint();
     const client = new TonClient4({ endpoint });
 
-    const poolV3Contract = client.open(new PoolV3Contract(Address.parse(POOL_ADDRESS)));
+    const poolContract = client.open(new PoolContract[DEX_VERSION.v1_5](Address.parse(POOL_ADDRESS)));
 
     const {
         jetton0_wallet,
@@ -35,7 +38,7 @@ export async function createMintMessage() {
         tick_spacing,
         feeGrowthGlobal0X128,
         feeGrowthGlobal1X128,
-    } = await poolV3Contract.getPoolStateAndConfiguration();
+    } = await poolContract.getPoolStateAndConfiguration();
 
     const pool = new Pool(jetton0, jetton1, lp_fee_current, price_sqrt.toString(), liquidity.toString(), tick, tick_spacing);
 
@@ -53,8 +56,11 @@ export async function createMintMessage() {
         useFullPrecision: true,
     });
 
-    const userJetton0Wallet = Address.parse("TON user jetton wallet");
-    const userJetton1Wallet = Address.parse("USDT user jetton wallet");
+    const jetton0Minter = client.open(new JettonMinter(Address.parse(jetton0.address)));
+    const jetton1Minter = client.open(new JettonMinter(Address.parse(jetton1.address)));
+
+    const userJetton0Wallet = await jetton0Minter.getWalletAddress(recipient); // TON user jetton wallet
+    const userJetton1Wallet = await jetton1Minter.getWalletAddress(recipient); // USDT user jetton wallet
 
     const routerJetton0Wallet = jetton0_wallet;
     const routerJetton1Wallet = jetton1_wallet;
@@ -62,7 +68,7 @@ export async function createMintMessage() {
     const slippage = new Percent(1, 100); // 1%
 
     try {
-        const ticks = await poolV3Contract.getTickInfosAll();
+        const ticks = await poolContract.getTickInfosAll();
 
         const mintRequest = {
             tickLower: position.tickLower,
@@ -87,9 +93,11 @@ export async function createMintMessage() {
             userJetton0Wallet,
             userJetton1Wallet,
             position,
-            wallet,
+            recipient,
             slippage,
-            0 // queryId
+            0, // queryId
+            undefined, // referral
+            DEX_VERSION.v1_5
         );
 
         return messages;
