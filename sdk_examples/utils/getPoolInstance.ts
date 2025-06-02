@@ -1,11 +1,10 @@
-import { getHttpV4Endpoint } from "@orbs-network/ton-access";
-import { Address, TonClient4 } from "@ton/ton";
-import { DEX_VERSION, Jetton, Pool, PoolContract } from "@toncodex/sdk";
+import { Address, getPoolVersion, Jetton, Pool, PoolContract } from "@toncodex/sdk";
+import { getTonClient } from "./getTonClient";
 
 export async function getPoolInstance(jettonA: Jetton, jettonB: Jetton, poolAddress: string) {
-    const endpoint = await getHttpV4Endpoint();
-    const client = new TonClient4({ endpoint });
-    const poolContract = client.open(new PoolContract[DEX_VERSION.v1](Address.parse(poolAddress)));
+    const client = getTonClient();
+    const poolVersion = await getPoolVersion(client, Address.parse(poolAddress));
+    const poolContract = client.open(new PoolContract[poolVersion](Address.parse(poolAddress)));
 
     /* pool.jetton0_minter and pool.jetton1_minter from poolState are always sorted, so jetton0 is always first */
     const { jetton0_minter, price_sqrt, tick, tick_spacing, lp_fee_current, liquidity, jetton0_wallet, jetton1_wallet } =

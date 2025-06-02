@@ -1,5 +1,4 @@
 import { Address, toNano } from "@ton/core";
-import { getHttpV4Endpoint } from "@orbs-network/ton-access";
 import {
     ADDRESS_ZERO,
     DEX_VERSION,
@@ -14,7 +13,7 @@ import {
     tryParseTick,
     validateMint,
 } from "@toncodex/sdk";
-import { TonClient4 } from "@ton/ton";
+import { getTonClient } from "../../utils";
 
 const recipient = Address.parse(ADDRESS_ZERO); // replace with user wallet address
 const POOL_ADDRESS = "EQC_R1hCuGK8Q8FfHJFbimp0-EHznTuyJsdJjDl7swWYnrF0"; // TON - USDT v1.5
@@ -23,8 +22,7 @@ const jetton1 = new Jetton("0:b113a994b5024a16719f69139328eb759596c38a25f59028b1
 const amount0 = toNano(1).toString(); // 1 TON
 
 export async function createMintMessage() {
-    const endpoint = await getHttpV4Endpoint();
-    const client = new TonClient4({ endpoint });
+    const client = getTonClient();
 
     const poolContract = client.open(new PoolContract[DEX_VERSION.v1_5](Address.parse(POOL_ADDRESS)));
 

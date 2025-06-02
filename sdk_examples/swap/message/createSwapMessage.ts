@@ -1,13 +1,11 @@
 import { Address, toNano } from "@ton/core";
-import { getHttpV4Endpoint } from "@orbs-network/ton-access";
 import { ADDRESS_ZERO, Jetton, JettonMinter, PoolMessageManager, pTON_MINTER, ROUTER, SwapType } from "@toncodex/sdk";
-import { TonClient4 } from "@ton/ton";
+import { getTonClient } from "../../utils/getTonClient";
 
 const recipient = Address.parse(ADDRESS_ZERO); // replace with user wallet address
 
 export async function createSwapMessage() {
-    const endpoint = await getHttpV4Endpoint();
-    const client = new TonClient4({ endpoint });
+    const client = getTonClient();
 
     const jettonIn = new Jetton(pTON_MINTER.v1_5, 9, "TON"); // (address, decimals, symbol)
     const jettonOut = new Jetton("0:b113a994b5024a16719f69139328eb759596c38a25f59028b146fecdc3621dfe", 6, "USD₮");

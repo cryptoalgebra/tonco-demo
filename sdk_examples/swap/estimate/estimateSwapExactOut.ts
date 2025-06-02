@@ -1,14 +1,13 @@
-import { Address, toNano, TonClient4 } from "@ton/ton";
-import { getHttpV4Endpoint } from "@orbs-network/ton-access";
+import { Address, toNano } from "@ton/ton";
 import { DEX_VERSION, Jetton, JettonAmount, PoolContract, pTON_MINTER } from "@toncodex/sdk";
 import { getSwapEstimateExactOut } from "../../utils/getSwapEstimate";
 import { getPoolInstance } from "../../utils/getPoolInstance";
+import { getTonClient } from "../../utils/getTonClient";
 
 const POOL_ADDRESS = "EQC_R1hCuGK8Q8FfHJFbimp0-EHznTuyJsdJjDl7swWYnrF0"; // TON - USDT v1.5
 
 export async function estimateSwapExactOut() {
-    const endpoint = await getHttpV4Endpoint();
-    const client = new TonClient4({ endpoint });
+    const client = getTonClient();
 
     const poolContract = client.open(new PoolContract[DEX_VERSION.v1_5](Address.parse(POOL_ADDRESS)));
 

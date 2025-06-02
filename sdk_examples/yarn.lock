@@ -2,16 +2,16 @@
 # yarn lockfile v1
 
 
-"@orbs-network/ton-access@^2.3.3":
+"@orbs-network/ton-access@2.3.3":
   version "2.3.3"
-  resolved "https://registry.npmjs.org/@orbs-network/ton-access/-/ton-access-2.3.3.tgz"
+  resolved "https://registry.yarnpkg.com/@orbs-network/ton-access/-/ton-access-2.3.3.tgz#20292f83b52a75f451f185821180a7d9b829bcd3"
   integrity sha512-b1miCPts7wBG9JKYgzXIRZQm/LMy5Uk1mNK8NzlcXHL3HRHJkkFbuYJGuj3IkWCiIicW3Ipp4sYnn3Fwo4oB0g==
   dependencies:
     isomorphic-fetch "^3.0.0"
 
 "@swc/core-darwin-arm64@1.10.1":
   version "1.10.1"
-  resolved "https://registry.npmjs.org/@swc/core-darwin-arm64/-/core-darwin-arm64-1.10.1.tgz"
+  resolved "https://registry.yarnpkg.com/@swc/core-darwin-arm64/-/core-darwin-arm64-1.10.1.tgz#faaaab19b4a039ae67ef661c0144a6f20fe8a78e"
   integrity sha512-NyELPp8EsVZtxH/mEqvzSyWpfPJ1lugpTQcSlMduZLj1EASLO4sC8wt8hmL1aizRlsbjCX+r0PyL+l0xQ64/6Q==
 
 "@swc/core-darwin-x64@1.10.1":
@@ -56,7 +56,7 @@
 
 "@swc/core-win32-x64-msvc@1.10.1":
   version "1.10.1"
-  resolved "https://registry.yarnpkg.com/@swc/core-win32-x64-msvc/-/core-win32-x64-msvc-1.10.1.tgz#7d665a7c69642861aed850ecb0cdf5d87197edda"
+  resolved "https://registry.npmjs.org/@swc/core-win32-x64-msvc/-/core-win32-x64-msvc-1.10.1.tgz"
   integrity sha512-JWobfQDbTnoqaIwPKQ3DVSywihVXlQMbDuwik/dDWlj33A8oEHcjPOGs4OqcA3RHv24i+lfCQpM3Mn4FAMfacA==
 
 "@swc/core@^1.5.25":
@@ -124,10 +124,10 @@
     teslabot "^1.3.0"
     zod "^3.21.4"
 
-"@toncodex/sdk@mainnet":
-  version "1.1.6-mainnet"
-  resolved "https://registry.yarnpkg.com/@toncodex/sdk/-/sdk-1.1.6-mainnet.tgz#45919ec2478aba621eee59ed501833e988932210"
-  integrity sha512-S+9PtcZwTWvbDpkO/Mg44P9B4TSZy+RiwNj5IMU52allNya9s1nCyf906AUbJx97nBjCALaAU2AmknlfkvNbkA==
+"@toncodex/sdk@1.1.8-mainnet":
+  version "1.1.8-mainnet"
+  resolved "https://registry.yarnpkg.com/@toncodex/sdk/-/sdk-1.1.8-mainnet.tgz#69ba56627ffeff1d02ba2897681e2025141f1d3e"
+  integrity sha512-+T+am3eXUZy63fOeLVC2jKNQdNnkbE3WHaB+6cDT6Dppwdr1+wlDP4GNvefBSmpdxmIdyFR/Rj4r68f8crd/ig==
   dependencies:
     "@ton/core" "^0.59.0"
     "@ton/crypto" "^3.3.0"
